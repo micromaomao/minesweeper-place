@@ -355,6 +355,45 @@ class MinesweeperApp {
     return (c.cell_state[idx] & CELL_STATES.Flagged) || this.isClickable(c, idx);
   }
 
+  computeAutoClickTargets(block_x: number, block_y: number): [number, number][] {
+    let cidx = this.chunk_manager.getChunkOfBlock(block_x, block_y);
+    if (!cidx) {
+      return [];
+    }
+    let [c, idx] = cidx;
+    if (!(c.cell_state[idx] & CELL_STATES.Clicked) || c.cell_type[idx] != CELL_RESULTS.Normal) {
+      return [];
+    }
+    let bomb_count = c.neighbouring_bombs_count[idx];
+    let targets: [number, number][] = [];
+    let found_bombs_count = 0;
+    for (let off_y = -1; off_y <= 1; off_y += 1) {
+      for (let off_x = -1; off_x <= 1; off_x += 1) {
+        if (off_y == 0 && off_x == 0) {
+          continue;
+        }
+        cidx = this.chunk_manager.getChunkOfBlock(block_x + off_x, block_y + off_y);
+        if (!cidx) {
+          return [];
+        }
+        [c, idx] = cidx;
+        if ((c.cell_state[idx] & CELL_STATES.Flagged) || ((c.cell_state[idx] & CELL_STATES.Clicked) && c.cell_type[idx] == CELL_RESULTS.Bomb)) {
+          // Either user suspected this is a bomb, or this is a bomb that has been revealed.
+          // Either way, we count it.
+          found_bombs_count += 1;
+        } else if (!(c.cell_state[idx] & CELL_STATES.Clicked) && c.cell_type[idx] != CELL_RESULTS.Open) {
+          // A click candidate
+          targets.push([block_x + off_x, block_y + off_y]);
+        }
+      }
+    }
+    if (found_bombs_count == bomb_count) {
+      return targets;
+    } else {
+      return [];
+    }
+  }
+
   actionBeginClick() {
     let pos = this.client_player.targeted_block.slice() as [number, number];
     let cidx = this.chunk_manager.getChunkOfBlock(...pos);
@@ -362,7 +401,7 @@ class MinesweeperApp {
       return;
     }
     let [c, idx] = cidx;
-    if (this.isClickable(c, idx)) {
+    if (this.isClickable(c, idx) || this.computeAutoClickTargets(...pos).length > 0) {
       this.clicking_block = pos;
     }
   }
@@ -373,9 +412,19 @@ class MinesweeperApp {
       return false;
     }
     let [c, idx] = cidx;
+    if (c.cell_state[idx] & CELL_STATES.Flagged) {
+      return false;
+    }
     if (this.isClickable(c, idx)) {
       this.clicking_block = null;
       c.cell_state[idx] |= CELL_STATES.Clicked;
+      return true;
+    }
+    let targets = this.computeAutoClickTargets(block_x, block_y);
+    if (targets.length > 0) {
+      for (let [x, y] of targets) {
+        this.actionClick(x, y);
+      }
       return true;
     }
     return false;
@@ -414,13 +463,18 @@ class MinesweeperApp {
     if (((c.cell_state[idx] & CELL_STATES.Clicked) || (c.cell_type[idx] === CELL_RESULTS.Open)) && c.neighbouring_bombs_count[idx] === 0) {
       for (let yoff = -1; yoff <= 1; yoff += 1) {
         for (let xoff = -1; xoff <= 1; xoff += 1) {
-          if (xoff === 0 && yoff === 0) {
+          if (xoff == 0 && yoff == 0) {
             continue;
           }
           let bx = target_x + xoff;
           let by = target_y + yoff;
-          let clicked = this.actionClick(bx, by);
-          if (clicked) {
+          cidx = this.chunk_manager.getChunkOfBlock(bx, by);
+          if (!cidx) {
+            continue;
+          }
+          [c, idx] = cidx;
+          if (c.cell_type[idx] == CELL_RESULTS.Normal && !(c.cell_state[idx] & (CELL_STATES.Flagged | CELL_STATES.Clicked))) {
+            this.actionClick(bx, by);
             nexts.push([bx, by]);
           }
         }
