@@ -53,7 +53,7 @@ class MinesweeperApp {
   visible_world_rect: Bounds;
   players: Player[];
   mouse_sensitivity_inv: number;
-  move_buf: [number, number];
+  cursor_at_world: [number, number];
   clicking_block: [number, number] | null;
   open_nearby_cells_queue: [number, number][];
   last_nearby_cell_auto_open_time: number;
@@ -70,7 +70,7 @@ class MinesweeperApp {
     this.draw_context = canvas.getContext("2d")!;
     this.gui_scale = this.scale / 32;
     this.players = [this.client_player];
-    this.move_buf = [0, 0];
+    this.cursor_at_world = [0.5, 0.5];
     this.mouse_sensitivity_inv = this.scale * 1.8;
     this.clicking_block = null;
     this.open_nearby_cells_queue = [];
@@ -116,22 +116,10 @@ class MinesweeperApp {
     return (this.current_update_time - this.last_update_time) / 1000;
   }
 
-  private _do_move_buf(component: 0 | 1) {
-    let sign = Math.sign(this.move_buf[component]);
-    while (Math.abs(this.move_buf[component]) > this.mouse_sensitivity_inv) {
-      this.move_buf[component] -= sign * this.mouse_sensitivity_inv;
-      this.client_player.targeted_block[component] += sign;
-    }
-    if (Math.abs(this.move_buf[component]) > 1e-5) {
-      this.move_buf[component] = factor_ease(this.move_buf[component], 0, 0, this.mouse_sensitivity_inv, 0.2, this.deltaT);
-    }
-  }
-
   update() {
     this.current_update_time = Date.now();
     let old_player_pos = this.client_player.targeted_block.slice();
-    this._do_move_buf(0);
-    this._do_move_buf(1);
+    this.client_player.targeted_block = this.cursor_at_world.map(x => Math.floor(x)) as [number, number];
     if (old_player_pos[0] != this.client_player.targeted_block[0] || old_player_pos[1] != this.client_player.targeted_block[1]) {
       this.animateOpenNearbyCells(...this.client_player.targeted_block);
     }
@@ -182,23 +170,24 @@ class MinesweeperApp {
     this.chunk_manager.ensureChunksIn(player_bounds);
   }
 
-  blockToScreen(x: number, y: number): [number, number] {
+  worldToScreen(x: number, y: number): [number, number] {
     let x1 = (x - this.center_pos[0]) * this.scale + this.canvas.width / 2;
     let y1 = (y - this.center_pos[1]) * this.scale + this.canvas.height / 2;
     return [x1, y1];
   }
 
   draw() {
-    this.draw_context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    let ctx = this.draw_context;
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     for (let chunk of this.chunk_manager.loaded_chunks.values()) {
       this.drawChunk(chunk);
     }
     if (this.clicking_block) {
-      let [x, y] = this.blockToScreen(...this.clicking_block);
-      this.draw_context.fillStyle = "#000";
-      this.draw_context.globalAlpha = 0.3;
-      this.draw_context.fillRect(x, y, this.scale, this.scale);
-      this, this.draw_context.globalAlpha = 1;
+      let [x, y] = this.worldToScreen(...this.clicking_block);
+      ctx.fillStyle = "#000";
+      ctx.globalAlpha = 0.3;
+      ctx.fillRect(x, y, this.scale, this.scale);
+      this, ctx.globalAlpha = 1;
     }
     for (let p of this.players) {
       if (p != this.client_player) {
@@ -206,6 +195,11 @@ class MinesweeperApp {
       }
     }
     this.drawPlayer(this.client_player);
+    // cursor
+    ctx.fillStyle = "#000";
+    let dot_width = Math.max(this.gui_scale * 2, 2);
+    let cursor_coord = this.worldToScreen(...this.cursor_at_world);
+    ctx.fillRect(cursor_coord[0] - dot_width / 2, cursor_coord[1] - dot_width / 2, dot_width, dot_width);
   }
 
   drawChunk(chunk: Chunk) {
@@ -221,7 +215,7 @@ class MinesweeperApp {
         if (chunk.cell_type[idx] == CELL_RESULTS.Open) {
           continue;
         }
-        let [sx, sy] = this.blockToScreen(chunk_top_left[0] + x, chunk_top_left[1] + y);
+        let [sx, sy] = this.worldToScreen(chunk_top_left[0] + x, chunk_top_left[1] + y);
         let [sw, sh] = [this.scale, this.scale];
         if (!(chunk.cell_state[idx] & CELL_STATES.Clicked) && chunk.cell_type[idx] != CELL_RESULTS.Open) {
           // border
@@ -268,14 +262,8 @@ class MinesweeperApp {
     if (in_view) {
       ctx.strokeStyle = "#28ff49"; // TODO: randomize
       ctx.lineWidth = this.gui_scale * 3;
-      let rect_coord = this.blockToScreen(block_x, block_y);
+      let rect_coord = this.worldToScreen(block_x, block_y);
       ctx.strokeRect(...rect_coord, this.scale, this.scale);
-      if (is_us) {
-        let center_off = this.move_buf.map(v => v / this.mouse_sensitivity_inv * this.scale / 2);
-        ctx.fillStyle = "#000";
-        let dot_width = Math.max(this.gui_scale * 2, 1);
-        ctx.fillRect(rect_coord[0] + this.scale / 2 + center_off[0] - dot_width / 2, rect_coord[1] + this.scale / 2 + center_off[1] - dot_width / 2, dot_width, dot_width);
-      }
     }
   }
 
@@ -343,8 +331,8 @@ class MinesweeperApp {
   actionMove(dx: number, dy: number) {
     dx = Math.sign(dx) * Math.max(Math.pow(Math.abs(dx), 1.1), dx);
     dy = Math.sign(dy) * Math.max(Math.pow(Math.abs(dy), 1.1), dy);
-    this.move_buf[0] += dx;
-    this.move_buf[1] += dy;
+    this.cursor_at_world[0] += dx / this.scale;
+    this.cursor_at_world[1] += dy / this.scale;
   }
 
   isClickable(c: Chunk, idx: number) {
