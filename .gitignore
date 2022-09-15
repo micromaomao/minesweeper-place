@@ -1,2 +1,4 @@
 target
 .vscode
+.parcel-cache
+node_modules

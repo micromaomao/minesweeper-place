@@ -1,12 +1,9 @@
 use gen::{CellResult, Generator, CHUNK_SIZE};
 use std::fmt::Write;
 fn main() {
-  let g = Generator::new_from_seed(0);
-  for i in 0..100 {
-    let (cr, neigh) = g.gen_chunk(0, i);
-    dump_chunk(&cr, &neigh);
-    println!("");
-  }
+  let g = Generator::new_from_seed(1);
+  let (cr, neigh) = g.gen_chunk(0, 0);
+  dump_chunk(&cr, &neigh);
 }
 
 fn dump_chunk(cr: &[CellResult], neigh: &[u8]) {
@@ -22,9 +19,9 @@ fn dump_chunk(cr: &[CellResult], neigh: &[u8]) {
         assert_eq!(neigh, 0);
       }
       match cell {
-        CellResult::Normal => write!(&mut s, " {}", neigh),
-        CellResult::Bomb => write!(&mut s, "! "),
-        CellResult::Open => write!(&mut s, ". "),
+        CellResult::Normal => write!(&mut s, "{}", neigh),
+        CellResult::Bomb => write!(&mut s, "!"),
+        CellResult::Open => write!(&mut s, "."),
       }
       .unwrap();
     }

@@ -18,7 +18,7 @@ pub enum CellResult {
 pub const CHUNK_SIZE: i32 = 16;
 
 // Use an irrational number to prevent artifact caused by the fact that perlin is always 0 at integer points.
-const NOISE_SCALE: f64 = std::f64::consts::PI / 40.0;
+const NOISE_SCALE: f64 = std::f64::consts::PI / 50.0;
 
 #[wasm_bindgen(inspectable)]
 pub struct Generator {
@@ -39,7 +39,7 @@ impl Generator {
     rvalue /= u32::MAX as f64;
     if bomb_ness < 0.15 {
       CellResult::Open
-    } else if (0.40..0.60).contains(&bomb_ness) {
+    } else if (0.40..0.53).contains(&bomb_ness) {
       if rvalue < 0.7 {
         CellResult::Bomb
       } else {
@@ -47,7 +47,7 @@ impl Generator {
       }
     } else if bomb_ness > 0.60 {
       let mut p = (bomb_ness - 0.6) / (1.0 - 0.6);
-      p = p.min(0.6);
+      p = p.min(0.5);
       if rvalue < p {
         CellResult::Bomb
       } else {

@@ -1,0 +1,25 @@
+{
+  "name": "minesweeper-place",
+  "version": "0.1.0",
+  "description": "",
+  "scripts": {
+    "build-web": "parcel build --dist-dir web/dist web/index.html",
+    "watch": "parcel --dist-dir web/dist web/index.html",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/micromaomao/minesweeper-place.git"
+  },
+  "author": "maowtm <m@maowtm.org>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/micromaomao/minesweeper-place/issues"
+  },
+  "homepage": "https://github.com/micromaomao/minesweeper-place#readme",
+  "browserslist": "> 0.5%, last 2 versions, not dead",
+  "devDependencies": {
+    "@parcel/transformer-sass": "^2.7.0",
+    "parcel": "^2.7.0"
+  }
+}
