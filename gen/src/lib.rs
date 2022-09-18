@@ -40,14 +40,14 @@ impl Generator {
     if bomb_ness < 0.15 {
       CellResult::Open
     } else if (0.40..0.53).contains(&bomb_ness) {
-      if rvalue < 0.7 {
+      if rvalue < 0.6 {
         CellResult::Bomb
       } else {
         CellResult::Normal
       }
     } else if bomb_ness > 0.60 {
       let mut p = (bomb_ness - 0.6) / (1.0 - 0.6);
-      p = p.min(0.5);
+      p = p.min(0.4);
       if rvalue < p {
         CellResult::Bomb
       } else {
