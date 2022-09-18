@@ -124,8 +124,8 @@ class MinesweeperApp {
       this.animateOpenNearbyCells(...this.client_player.targeted_block);
     }
     this.center_pos = this.center_pos.map((curr, i) => {
-      let target = this.client_player.targeted_block[i] + 0.5;
-      return factor_ease(curr, target, 1, Infinity, 6, this.deltaT);
+      let target = this.cursor_at_world[i] + 0.5;
+      return factor_ease(curr, target, 1, Infinity, 12, this.deltaT);
     }) as [number, number];
     this.visible_world_rect = this.getVisibleWorldRectFromCenter(this.center_pos);
     this.ensureRegion();
@@ -406,6 +406,7 @@ class MinesweeperApp {
     if (this.isClickable(c, idx)) {
       this.clicking_block = null;
       c.cell_state[idx] |= CELL_STATES.Clicked;
+      this.animateOpenNearbyCells(block_x, block_y);
       return true;
     }
     let targets = this.computeAutoClickTargets(block_x, block_y);
@@ -448,6 +449,7 @@ class MinesweeperApp {
     }
     let [c, idx] = cidx;
     let nexts: [number, number][] = [];
+    let clicked = false;
     if (((c.cell_state[idx] & CELL_STATES.Clicked) || (c.cell_type[idx] === CELL_RESULTS.Open)) && c.neighbouring_bombs_count[idx] === 0) {
       for (let yoff = -1; yoff <= 1; yoff += 1) {
         for (let xoff = -1; xoff <= 1; xoff += 1) {
@@ -462,11 +464,15 @@ class MinesweeperApp {
           }
           [c, idx] = cidx;
           if (c.cell_type[idx] == CELL_RESULTS.Normal && !(c.cell_state[idx] & (CELL_STATES.Flagged | CELL_STATES.Clicked))) {
-            this.actionClick(bx, by);
-            nexts.push([bx, by]);
+            c.cell_state[idx] |= CELL_STATES.Clicked;
+            clicked = true;
           }
+          nexts.push([bx, by]);
         }
       }
+    }
+    if (!clicked) {
+      return [];
     }
     return nexts;
   }
