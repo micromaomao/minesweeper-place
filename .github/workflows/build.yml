@@ -1,0 +1,41 @@
+name: Build and deploy
+on:
+  push:
+    branches:
+    - main
+
+# This allows a subsequently queued workflow run to interrupt previous runs
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  build:
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup wasm-pack
+      run: "curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh"
+    - name: Build
+      run: ./build.sh
+    - name: Upload
+      uses: actions/upload-artifact@v3
+      with:
+        name: web-dist
+        path: web/dist/
+        if-no-files-found: error
+  deploy:
+    permissions:
+      contents: write
+    steps:
+    - name: Download
+      uses: actions/download-artifact@v3
+      with:
+        name: web-dist
+        path: ./dist
+    - name: Deploy
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./dist
+        cname: minesweeper.maowtm.org
+        force_orphan: true
