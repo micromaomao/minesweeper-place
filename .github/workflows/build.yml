@@ -28,6 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    needs: [build]
     steps:
     - name: Download
       uses: actions/download-artifact@v3
